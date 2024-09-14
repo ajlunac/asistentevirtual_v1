@@ -1,5 +1,6 @@
 import speech_recognition as sr
-import pyttsx3, pywhatkit
+import pyttsx3, pywhatkit, wikipedia, datetime, keyboard, requests
+from pygame import mixer
 
 name = "lola"
 listener = sr.Recognizer()
@@ -37,6 +38,25 @@ def run_lola():
                     print(f"Reproduciendo {music}")
                     talk(f"Reproduciendo {music}")
                     pywhatkit.playonyt(music)
+                elif "busca" in rec:
+                    search = rec.replace("busca", "")
+                    wikipedia.set_lang("es-ES")
+                    wiki = wikipedia.summary(search, 1)
+                    print(search +": " + wiki)
+                    talk(wiki)
+                elif "alarma" in rec:
+                    num = rec.replace("alarma", "")
+                    num = num.strip()
+                    talk("Alarma activada a las " + num + " horas")
+                    while True:
+                        if datetime.datetime.now().strftime("%H:%M") == num:
+                            print("DESPIERTA!!!")
+                            mixer.init()
+                            mixer.music.load("auronplay-alarm.mp3")
+                            mixer.music.play()
+                            if keyboard.read_key() == "s":
+                                mixer.music.stop()
+                                break
         else:
             print("No se ha podido entender lo que dijiste")
         
