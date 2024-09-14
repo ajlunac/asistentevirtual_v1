@@ -1,5 +1,6 @@
 import speech_recognition as sr
-import pyttsx3, pywhatkit, wikipedia, datetime, keyboard, requests
+import pyttsx3, pywhatkit, wikipedia, datetime, keyboard, os
+import subprocess as sub
 from pygame import mixer
 
 name = "lola"
@@ -8,6 +9,20 @@ engine = pyttsx3.init()
 
 voices = engine.getProperty('voices')
 engine.setProperty('voice', voices[1].id)
+
+sites = {
+    'google': 'google.com',
+    'youtube': 'youtube.com',
+    'facebook': 'facebook.com',
+    'whatsapp': 'web.whatsapp.com',
+    'cursos': 'freecodecamp.org/learn'
+}
+
+files = {
+    'carta': 'Carta Pasantias - Javier Luna.pdf',
+    'cédula': 'Cédula y papeleta - Javier Luna.docx',
+    'foto': 'Foto Javier Luna.jpg'
+}
 
 def talk(text):
     engine.say(text)
@@ -57,8 +72,42 @@ def run_lola():
                             if keyboard.read_key() == "s":
                                 mixer.music.stop()
                                 break
+                elif "abre" in rec:
+                    for site in sites:
+                        if site in rec:
+                            sub.call(f'start chrome.exe {sites[site]}', shell=True)
+                            talk(f"Abriendo {site}")
+                            break
+                elif "archivo" in rec:
+                    for file in files:
+                        if file in rec:
+                            sub.Popen([files[file]], shell=True)
+                            talk(f"Abriendo {file}")
+                            break
+                elif "escribe" in rec:
+                    try:
+                        with open("notas.txt", "a") as f:
+                            write(f)
+                    except FileNotFoundError as e:
+                        file = open("notas.txt", "w")
+                        write(file)
+                            
+                elif "termina" in rec:
+                    talk("Adiós!")
+                    break
+
         else:
             print("No se ha podido entender lo que dijiste")
+
+def write(f):
+    talk("¿Que quieres escribir?")
+    rec_write = listen()
+    f.write(rec_write + os.linesep)
+    f.close()
+    talk("Listo, puedes revisar tus notas")
+    sub.Popen("notas.exe", shell=True)
         
 if __name__ == "__main__":
     run_lola()
+    
+
