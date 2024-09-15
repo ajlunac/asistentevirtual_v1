@@ -24,6 +24,12 @@ files = {
     'foto': 'Foto Javier Luna.jpg'
 }
 
+programs = {
+    'notas': r"C:\Program Files\Notepad++\notepad++.exe",
+    'calc': r"C:\Program Files\LibreOffice\program\scalc.exe",
+    'writer': r"C:\Program Files\LibreOffice\program\swriter.exe"
+}
+
 def talk(text):
     engine.say(text)
     engine.runAndWait()
@@ -59,6 +65,7 @@ def run_lola():
                     wiki = wikipedia.summary(search, 1)
                     print(search +": " + wiki)
                     talk(wiki)
+                    
                 elif "alarma" in rec:
                     num = rec.replace("alarma", "")
                     num = num.strip()
@@ -72,18 +79,24 @@ def run_lola():
                             if keyboard.read_key() == "s":
                                 mixer.music.stop()
                                 break
+                            
                 elif "abre" in rec:
                     for site in sites:
                         if site in rec:
                             sub.call(f'start chrome.exe {sites[site]}', shell=True)
                             talk(f"Abriendo {site}")
-                            break
+                    for app in programs:
+                        if app in rec:
+                            talk(f"Abriendo {app}")
+                            sub.Popen([programs[app]])
+                        
                 elif "archivo" in rec:
                     for file in files:
                         if file in rec:
                             sub.Popen([files[file]], shell=True)
                             talk(f"Abriendo {file}")
                             break
+                        
                 elif "escribe" in rec:
                     try:
                         with open("notas.txt", "a") as f:
@@ -91,6 +104,7 @@ def run_lola():
                     except FileNotFoundError as e:
                         file = open("notas.txt", "w")
                         write(file)
+                
                             
                 elif "termina" in rec:
                     talk("Adiós!")
