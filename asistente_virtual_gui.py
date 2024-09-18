@@ -4,6 +4,7 @@ import subprocess as sub
 from pygame import mixer
 from tkinter import *
 from PIL import Image, ImageTk
+import threading as tr
 
 # Interfaz grafica del asistente virtual.
 main_window = Tk()
@@ -30,9 +31,12 @@ canva_comandos = Canvas(main_window, bg="#2C5364", height=180, width=600)
 canva_comandos.pack(pady=10)
 canva_comandos.create_text(120, 90, text=comandos, fill="#eea849", font=("Arial", 12))
 
+text_info = Text(main_window, bg="#2C5364", fg="#eea849", font=("Arial", 12),)
+text_info.place(x=100, y=270, width=600, height=60)
+
 lola_img = ImageTk.PhotoImage(Image.open("Logo.png"))
 window_img = Label(main_window, image=lola_img, bg="#eea849")
-window_img.pack(pady=2)
+window_img.place(x=100, y=330, width=600, height=200)
 
 def mexican_voice():
     change_voice(0)
@@ -51,29 +55,39 @@ voices = engine.getProperty('voices')
 engine.setProperty('voice', voices[0].id)
 engine.setProperty('rate', 145)
 
-sites = {
-    'google': 'google.com',
-    'youtube': 'youtube.com',
-    'facebook': 'facebook.com',
-    'whatsapp': 'web.whatsapp.com',
-    'cursos': 'freecodecamp.org/learn'
-}
-
-files = {
-    'carta': 'Carta Pasantias - Javier Luna.pdf',
-    'cédula': 'Cédula y papeleta - Javier Luna.docx',
-    'foto': 'Foto Javier Luna.jpg'
-}
-
-programs = {
-    'notas': r"C:\Program Files\Notepad++\notepad++.exe",
-    'calc': r"C:\Program Files\LibreOffice\program\scalc.exe",
-    'writer': r"C:\Program Files\LibreOffice\program\swriter.exe"
-}
+sites = dict()
+files = dict()
+programs = dict()
 
 def talk(text):
     engine.say(text)
     engine.runAndWait()
+    
+def read_and_talk():
+    text = text_info.get("1.0", "end-1c")
+    talk(text)
+
+def write_text(text_wiki):
+    text_info.insert(INSERT, text_wiki)
+
+def clock(rec):
+    num = rec.replace("alarma", "")
+    num = num.strip()
+    talk("Alarma activada a las " + num + " horas")
+    if num[0] != "0" and len(num) < 5:
+        num = "0" + num
+    print(num)
+    while True:
+        if datetime.datetime.now().strftime("%H:%M") == num:
+            print("DESPIERTA!!!")
+            mixer.init()
+            mixer.music.load("auronplay-alarm.mp3")
+            mixer.music.play()
+        else:
+            continue
+        if keyboard.read_key() == "s":  
+            mixer.music.stop()
+            break
 
 def listen():
     listener = sr.Recognizer()
@@ -82,7 +96,7 @@ def listen():
         listener.adjust_for_ambient_noise(source)
         pc = listener.listen(source)
     try:
-        rec = listener.recognize_google(pc, language="es-ES")
+        rec = listener.recognize_google(pc, language="es")
         rec = rec.lower()
     except sr.UnknownValueError:
         talk("No se ha podido entender lo que dijiste")
@@ -102,24 +116,15 @@ def run_lola():
                     pywhatkit.playonyt(music)
                 elif "busca" in rec:
                     search = rec.replace("busca", "")
-                    wikipedia.set_lang("es-ES")
+                    wikipedia.set_lang("es")
                     wiki = wikipedia.summary(search, 1)
-                    print(search +": " + wiki)
                     talk(wiki)
-                    
+                    write_text(search +": " + wiki)
+                    break
                 elif "alarma" in rec:
-                    num = rec.replace("alarma", "")
-                    num = num.strip()
-                    talk("Alarma activada a las " + num + " horas")
-                    while True:
-                        if datetime.datetime.now().strftime("%H:%M") == num:
-                            print("DESPIERTA!!!")
-                            mixer.init()
-                            mixer.music.load("auronplay-alarm.mp3")
-                            mixer.music.play()
-                            if keyboard.read_key() == "s":
-                                mixer.music.stop()
-                                break
+                    t = tr.Thread(target=clock, args=(rec,))
+                    t.start()
+                    break
                             
                 elif "abre" in rec:
                     for site in sites:
@@ -161,15 +166,101 @@ def write(f):
     f.close()
     talk("Listo, puedes revisar tus notas")
     sub.Popen("notas.exe", shell=True)
+    
+def open_w_files():
+    window_files = Toplevel()
+    window_files.title("Agregar archivos")
+    window_files.geometry("400x200")
+    window_files.config(bg="#2C5364")
+    window_files.resizable(0, 0)
+    main_window.eval(f'tk::PlaceWindow {str(window_files)} center')
+
+    title_label = Label(window_files, text="Agregar archivos", font=("Arial", 16, 'bold'), bg="#2C5364", fg="#eea849")
+    title_label.pack(pady=3)
+    name_label = Label(window_files, text="Nombre del archivo", font=("Arial", 12, 'bold'), bg="#2C5364", fg="#eea849")
+    name_label.pack(pady=2)
+    
+    namefile_entry = Entry(window_files, font=("Arial", 12), bg="#2C5364", fg="#eea849")
+    namefile_entry.pack(pady=1)
+    
+    path_label = Label(window_files, text="Ruta del archivo", font=("Arial", 12, 'bold'), bg="#2C5364", fg="#eea849")
+    path_label.pack(pady=2)
+    
+    path_entry = Entry(window_files, font=("Arial", 12), bg="#2C5364", fg="#eea849", width=35)
+    path_entry.pack(pady=1)
+    
+    save_button = Button(window_files, text="Guardar", bg="#2C5364", fg="#eea849", font=("Arial", 12, 'bold'), width=8, height=1)
+    save_button.pack(pady=4)
+    
+def open_w_apps():
+    window_apps = Toplevel()
+    window_apps.title("Agregar APPs")
+    window_apps.geometry("400x200")
+    window_apps.config(bg="#2C5364")
+    window_apps.resizable(0, 0)
+    main_window.eval(f'tk::PlaceWindow {str(window_apps)} center')
+
+    title_label = Label(window_apps, text="Agregar APPs", font=("Arial", 16, 'bold'), bg="#2C5364", fg="#eea849")
+    title_label.pack(pady=3)
+    name_label = Label(window_apps, text="Nombre de la APP", font=("Arial", 12, 'bold'), bg="#2C5364", fg="#eea849")
+    name_label.pack(pady=2)
+    
+    nameapp_entry = Entry(window_apps, font=("Arial", 12), bg="#2C5364", fg="#eea849")
+    nameapp_entry.pack(pady=1)
+    
+    path_label = Label(window_apps, text="Ruta del APP", font=("Arial", 12, 'bold'), bg="#2C5364", fg="#eea849")
+    path_label.pack(pady=2)
+    
+    path_entry = Entry(window_apps, font=("Arial", 12), bg="#2C5364", fg="#eea849", width=35)
+    path_entry.pack(pady=1)
+    
+    save_button = Button(window_apps, text="Guardar", bg="#2C5364", fg="#eea849", font=("Arial", 12, 'bold'), width=8, height=1)
+    save_button.pack(pady=4)
+
+def open_w_pages():
+    window_pages = Toplevel()
+    window_pages.title("Agregar páginas")
+    window_pages.geometry("400x200")
+    window_pages.config(bg="#2C5364")
+    window_pages.resizable(0, 0)
+    main_window.eval(f'tk::PlaceWindow {str(window_pages)} center')
+
+    title_label = Label(window_pages, text="Agregar página", font=("Arial", 16, 'bold'), bg="#2C5364", fg="#eea849")
+    title_label.pack(pady=3)
+    name_label = Label(window_pages, text="Nombre de la página", font=("Arial", 12, 'bold'), bg="#2C5364", fg="#eea849")
+    name_label.pack(pady=2)
+    
+    pagefile_entry = Entry(window_pages, font=("Arial", 12), bg="#2C5364", fg="#eea849")
+    pagefile_entry.pack(pady=1)
+    
+    path_label = Label(window_pages, text="Ruta de la página", font=("Arial", 12, 'bold'), bg="#2C5364", fg="#eea849")
+    path_label.pack(pady=2)
+    
+    path_entry = Entry(window_pages, font=("Arial", 12), bg="#2C5364", fg="#eea849", width=35)
+    path_entry.pack(pady=1)
+    
+    save_button = Button(window_pages, text="Guardar", bg="#2C5364", fg="#eea849", font=("Arial", 12, 'bold'), width=8, height=1)
+    save_button.pack(pady=4)
 
 button_voice_mx = Button(main_window, text="Voz México", bg="#2C5364", fg="#eea849", font=("Arial", 12, 'bold'), command=mexican_voice)
-button_voice_mx.place(x=230, y=400, width=100, height=30)
+button_voice_mx.place(x=20, y=400, width=100, height=30)
 
 button_voice_us = Button(main_window, text="Voz USA", bg="#2C5364", fg="#eea849", font=("Arial", 12, 'bold'), command=american_voice)
-button_voice_us.place(x=340, y=400, width=100, height=30)
+button_voice_us.place(x=130, y=400, width=100, height=30)
 
 button_listen = Button(main_window, text="Escuchar", bg="#2C5364", fg="#eea849", font=("Arial", 12, 'bold'), command=run_lola)
-button_listen.place(x=450, y=400, width=100, height=30)
+button_listen.place(x=240, y=400, width=100, height=30)
 
+button_speak = Button(main_window, text="Hablar", bg="#2C5364", fg="#eea849", font=("Arial", 12, 'bold'), command=read_and_talk)
+button_speak.place(x=350, y=400, width=100, height=30)
+
+button_add_files = Button(main_window, text="Archivos", bg="#2C5364", fg="#eea849", font=("Arial", 12, 'bold'), command=open_w_files)
+button_add_files.place(x=460, y=400, width=100, height=30)
+
+button_add_app = Button(main_window, text="APPs", bg="#2C5364", fg="#eea849", font=("Arial", 12, 'bold'), command=open_w_apps)
+button_add_app.place(x=570, y=400, width=100, height=30)
+
+button_add_pages = Button(main_window, text="Páginas", bg="#2C5364", fg="#eea849", font=("Arial", 12, 'bold'), command=open_w_pages)
+button_add_pages.place(x=680, y=400, width=100, height=30)
 
 main_window.mainloop()
